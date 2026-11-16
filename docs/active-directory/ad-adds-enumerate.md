@@ -18,6 +18,10 @@ Use the appropriate data collector to gather information for **BloodHound** or *
 * [SpecterOps/GitHound](https://github.com/SpecterOps/GitHound) for GitHub attack paths (BloodHound OpenGraph PowerShell collector)
 * [SpecterOps/1PassHound](https://github.com/SpecterOps/1PassHound) for 1Password attack paths (BloodHound OpenGraph PowerShell collector)
 * [TheSleekBoyCompany/AnsibleHound](https://github.com/TheSleekBoyCompany/AnsibleHound) for Ansible WorX and Ansible Tower attack paths (BloodHound OpenGraph Go collector)
+* [p0dalirius/sharehound](https://github.com/p0dalirius/sharehound) - for Network Shares attack paths (BloodHound OpenGraph Python collector)
+* [C0KERNEL/SecretHound](https://github.com/C0KERNEL/SecretHound) - for secrets (BloodHound OpenGraph Python collector)
+* [F41zK4r1m/GCP-Hound](https://github.com/F41zK4r1m/GCP-Hound) - for GCP attack path (BloodHound OpenGraph Python collector)
+* [SpecterOps/ConfigManBearPig](https://github.com/SpecterOps/ConfigManBearPig) - for SCCM attack path (BloodHound OpenGraph PowerShell collector)
 
 **Examples**:
 

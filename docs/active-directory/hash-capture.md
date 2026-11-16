@@ -1,5 +1,36 @@
 # Hash - Capture and Cracking
 
+## Hash Cracking Table
+
+| Mode   | Hash type                   | Generic hash format                                                                |
+| -----: | --------------------------- | ---------------------------------------------------------------------------------- |
+| `3000` | LM                          | `<LM_HASH>`                                                                        |
+| `1000` | NT                          | `<NT_HASH>`                                                                        |
+| `5500` | NetNTLMv1 / NetNTLMv1+ESS   | `<USERNAME>::<DOMAIN>:<LM_RESPONSE>:<NTLM_RESPONSE>:<SERVER_CHALLENGE>`            |
+| `5600` | NetNTLMv2                   | `<USERNAME>::<DOMAIN>:<SERVER_CHALLENGE>:<NT_PROOF_STRING>:<NTLMV2_RESPONSE_BLOB>` |
+| `2100` | Domain Cached Credentials 2 | `$DCC2$<PBKDF2_ITERATIONS>#<USERNAME>#<DCC2_HASH>`                                 |
+
+### LM Hash
+
+All hashes are not born equals, **LM hash (LAN Manager hash)** is an obsolete Windows password-hashing format. Here are the steps to reproduce the LM hashing method.
+
+1. Convert the password to uppercase.
+2. Pad or truncate it to exactly 14 characters.
+3. Split it into two independent 7-character halves.
+4. Convert each half into a DES key.
+5. Use each key to encrypt the fixed string.
+6. Concatenate the two 8-byte results.
+
+LM hash can be cracked easily.
+
+### NT Hash
+
+NT hash might be cracked depending on the size of the password. However it is also possible to use it without breaking it, see the **Hash - Pass the Hash** page.
+
+### DCC2 Hash
+
+DCC2 is also called **MSCache v2** or **Domain Cached Credentials v2**. Unlike NetNTLM challenge-response formats, it does not contain a domain, server challenge, or client response. It represents a locally cached domain credential verifier.
+
 ## LmCompatibilityLevel
 
 LmCompatibilityLevel is a Windows security setting that determines the level of authentication protocol used between computers. It specifies how Windows handles NTLM and LAN Manager (LM) authentication protocols, impacting how passwords are stored and how authentication requests are processed. The level can range from 0 to 5, with higher levels generally providing more secure authentication methods.
@@ -62,7 +93,7 @@ reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa /v lmcompatibilitylevel
     [NTHASH-SHUCKED] 93B3C62269D55DB9CA660BBB91E2BD0B
     ```
 
-* If you got some `NetNTLMv1 tokens`, you can also try to crack them via [crack.sh](https://crack.sh/) (cloud service when available, more time and potentially chargeable). For this you need to format them to submit them on [crack.sh](https://crack.sh/netntlm/). The converter of [shuck.sh](https://shuck.sh/) can be used to format easily.
+* If you got some `NetNTLMv1 tokens`, you can also try to crack them via [crack.sh](https://crack.sh/)/[ntlmv1.com](https://ntlmv1.com/). For this you need to format them to submit them on [crack.sh](https://crack.sh/netntlm/)/[ntlmv1.com](https://ntlmv1.com/). The converter of [shuck.sh](https://shuck.sh/) can be used to format easily.
 
     ```ps1
     # When there is no-ESS/SSP and the challenge is set to 1122334455667788, it's free (0$):
@@ -89,9 +120,9 @@ reg query HKLM\SYSTEM\CurrentControlSet\Control\Lsa /v lmcompatibilitylevel
 
 :warning: NetNTLMv1 format is `login::domain:lmresp:ntresp:clientChall`. If the `lmresp` contains a **0's-padding** this means that the token is protected by **ESS/SSP**.
 
-:warning: NetNTLMv1 final challenge is the Responder's challenge itself (`1122334455667788`) when there is no ESS/SSP. If ESS/SSP is enabled, the final challenge is the first 8 bytes of the MD5 hash from the concatenation of the client challenge and server challenge. The details of the algorithmic generation of a NetNTLMv1 are illustrated on the [shuck.sh Generator](https://shuck.sh/generator.php) and detailed in [MISCMag#128](https://connect.ed-diamond.com/misc/misc-128/shuck-hash-before-trying-to-crack-it).
+:warning: NetNTLMv1 final challenge is the Responder's challenge itself (`1122334455667788`) when there is no ESS/SSP. If ESS/SSP is enabled, the final challenge is the first 8 bytes of the MD5 hash from the concatenation of the client challenge and server challenge. The details of the algorithmic generation of a NetNTLMv1 are illustrated on the [shuck.sh/generator.php](https://shuck.sh/generator.php) and detailed in [MISCMag#128](https://connect.ed-diamond.com/misc/misc-128/shuck-hash-before-trying-to-crack-it).
 
-:warning: If you get some tokens from other tools ([OpenSecurityResearch/hostapd-wpe](https://github.com/OpenSecurityResearch/hostapd-wpe) or [moxie0/chapcrack](https://github.com/moxie0/chapcrack)) in other formats, like tokens starting with the prefix `$MSCHAPv2$`, `$NETNTLM$` or `$99$`, they correspond to a classic NetNTLMv1 and can be converted from one format to another [here](https://shuck.sh/converter.php).
+:warning: If you get some tokens from other tools ([OpenSecurityResearch/hostapd-wpe](https://github.com/OpenSecurityResearch/hostapd-wpe) or [moxie0/chapcrack](https://github.com/moxie0/chapcrack)) in other formats, like tokens starting with the prefix `$MSCHAPv2$`, `$NETNTLM$` or `$99$`, they correspond to a classic NetNTLMv1 and can be converted from one format to another [shuck.sh/converter.php](https://shuck.sh/converter.php).
 
 **Mitigations**:
 

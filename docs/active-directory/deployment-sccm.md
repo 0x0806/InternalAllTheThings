@@ -104,6 +104,12 @@
   Invoke-CMLootDownload -InventoryFile .\sccmfiles.txt -Extension msi
   ```
 
+* [synacktiv/SCCMSecrets](https://github.com/synacktiv/SCCMSecrets)
+
+    ```ps1
+    SCCMSecrets.py files --distribution-point 'sccm.lab.local/' --username 'username' --password 'P@ssw0rd'
+    ```
+
 ## SCCM Configuration Manager
 
 * [subat0mik/Misconfiguration-Manager/MisconfigurationManager.ps1](https://github.com/subat0mik/Misconfiguration-Manager) - Misconfiguration Manager is a central knowledge base for all known Microsoft Configuration Manager tradecraft and associated defensive and hardening guidance.
@@ -126,7 +132,11 @@
     sudo python3 pxethiefy.py explore -i eth0
     ```
 
-* [MWR-CyberSec/PXEThief](https://github.com/MWR-CyberSec/PXEThief)
+* [MWR-CyberSec/PXEThief](https://github.com/MWR-CyberSec/PXEThief), [PR #11](https://github.com/MWR-CyberSec/PXEThief/pull/11) - Removing win32crypt dependency for full Linux support
+
+    ```ps1
+    python pxethief.py 2 10.10.10.10
+    ```
 
 ### CRED-2 Request a policy containing credentials
 
@@ -360,6 +370,7 @@ CcmExec is a service native to SCCM Windows clients that is executed on every in
 * [Exploiting RBCD Using a Normal User Account - tiraniddo.dev - May 13, 2022](https://www.tiraniddo.dev/2022/05/exploiting-rbcd-using-normal-user.html)
 * [Exploring SCCM by Unobfuscating Network Access Accounts - @_xpn_ - July 9, 2022](https://blog.xpnsec.com/unobfuscating-network-access-accounts/)
 * [Further Adventures With CMPivot — Client Coercion - Diego Lomellini - February 3, 2025](https://posts.specterops.io/further-adventures-with-cmpivot-client-coercion-38b878b740ac)
+* [Introducing ConfigManBearPig, a BloodHound OpenGraph Collector for SCCM - Chris Thompson - January 13, 2026](https://specterops.io/blog/2026/01/13/introducing-configmanbearpig-a-bloodhound-opengraph-collector-for-sccm/)
 * [Introducing MalSCCM - Phil Keeble -May 4, 2022](https://labs.nettitude.com/blog/introducing-malsccm/)
 * [Misconfiguration Manager: Overlooked and Overprivileged - Duane Michael - March 5, 2024](https://posts.specterops.io/misconfiguration-manager-overlooked-and-overprivileged-70983b8f350d)
 * [Network Access Accounts are evil… - Roger Zander - September 13, 2015](https://rzander.azurewebsites.net/network-access-accounts-are-evil/)

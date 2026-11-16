@@ -72,41 +72,15 @@ These libraries by default are included in the APK at the file path `/lib/<cpu>/
 
 Use `IDA`, `Radare2/Cutter` or `Ghidra` to reverse them.
 
-| CPU Native         | Library Path                |
-|----------------------|-----------------------------|
-| "generic" 32-bit ARM | lib/armeabi/libcalc.so      |
-| x86                  | lib/x86/libcalc.so          |
-| x64                  | lib/x86_64/libcalc.so       |
-| ARMv7                | lib/armeabi-v7a/libcalc.so  |
-| ARM64                | lib/arm64-v8a/libcalc.so    |
+| CPU Native           | Library Path               |
+| -------------------- | -------------------------- |
+| "generic" 32-bit ARM | lib/armeabi/libcalc.so     |
+| x86                  | lib/x86/libcalc.so         |
+| x64                  | lib/x86_64/libcalc.so      |
+| ARMv7                | lib/armeabi-v7a/libcalc.so |
+| ARM64                | lib/arm64-v8a/libcalc.so   |
 
 :warning: The shared object file (`.so`) doesn't need to be embedded in the app.
-
-### Sign and Package APK
-
-* `apktool` + `jarsigner`
-
-    ```powershell
-    apktool b ./application.apk
-    keytool -genkey -v -keystore application.keystore -alias application -keyalg RSA -keysize 2048 -validity 10000
-    jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore application.keystore application.apk application
-    zipalign -v 4 application.apk application-signed.apk
-    ```
-
-* `apktool` + `signapk`
-
-    ```powershell
-    apktool b app-release
-    ./signapk app-release/dist/app-release.apk
-    ```
-
-* [patrickfav/uber-apk-signer](https://github.com/patrickfav/uber-apk-signer) (Linux only)
-
-    ```powershell
-    java -jar uber-apk-signer.jar --apks /path/to/apks
-    ```
-
-* [APK Toolkit v1.3](https://xdaforums.com/t/tool-apk-toolkit-v1-3-windows.4572881/) (Windows only)
 
 ### Mobile Security Framework Static
 
@@ -160,6 +134,112 @@ Indentify Flutter use in the `MANIFEST.MF` and search for `libflutter.so`.
     blutter jadx/resources/lib/arm64-v8a/ ./blutter_output
     ```
 
+## APK Patching
+
+* [MadSquirrels/apkpatcher](https://gitlab.com/MadSquirrels/mobile/apkpatcher)
+
+```ps1
+docker run --rm -v .:/pwd -it madsquirrels/apkpatcher -a base.apk
+
+# Java dependencies
+apt install -y default-jre
+
+# sdktools dependendies installation
+wget https://dl.google.com/android/repository/commandlinetools-linux-6200805_latest.zip
+mkdir /usr/lib/android-sdk
+cd /usr/lib/android-sdk
+unzip commandlinetools-linux-6200805_latest.zip
+mkdir cmdline-tools
+mv tools/ cmdline-tools/
+echo 'export ANDROID_SDK_ROOT=/usr/lib/android-sdk' >> ~/.bashrc
+
+# installation of platform-tools
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator"
+
+# install apkpatcher
+pip install apkpatcher
+```
+
+### Sign and Package APK
+
+* [iBotPeaches/apktool](https://github.com/iBotPeaches/Apktool) + `jarsigner`
+
+    ```powershell
+    apktool b ./application.apk
+    keytool -genkey -v -keystore application.keystore -alias application -keyalg RSA -keysize 2048 -validity 10000
+    jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore application.keystore application.apk application
+    zipalign -v 4 application.apk application-signed.apk
+    ```
+
+* [iBotPeaches/apktool](https://github.com/iBotPeaches/Apktool) + `signapk`
+
+    ```powershell
+    apktool b app-release
+    ./signapk app-release/dist/app-release.apk
+    ```
+
+* [patrickfav/uber-apk-signer](https://github.com/patrickfav/uber-apk-signer) (Linux only)
+
+    ```powershell
+    java -jar uber-apk-signer.jar --apks /path/to/apks
+    ```
+
+* [APK Toolkit v1.3](https://xdaforums.com/t/tool-apk-toolkit-v1-3-windows.4572881/) (Windows only)
+
+### Unpack Resources
+
+```ps1
+apkpatcher -a <apk> --only-unpack dir
+apkpatcher -a <new_apk> --only-repack dir
+```
+
+### Inject Proxy Certificate
+
+Accept user certificate
+
+```ps1
+apkpatcher -a <apk> -e
+```
+
+Add a custom certificate
+
+```ps1
+apkpatcher -a <apk> -c burp.der
+```
+
+### Add Permissions
+
+```ps1
+apkpatcher -a <apk> --add-permissions <my_permission>
+```
+
+### Debug Mode
+
+Inject the `android:debuggable` option into an application `AndroidManifest.xml`, allowing users to debug applications even when they are in release mode.
+
+```ps1
+apkpatcher -a <apk>  --enable-debug
+```
+
+Set the application to be the debug target.
+
+```ps1
+adb shell am set-debug-app --persistent
+```
+
+Start the application’s activity in debug mode.
+
+```ps1
+adb shell am start -D -a android.intent.action.MAIN -n <package>/<Activity>
+```
+
+Then use `gdbserver` for Native Code or Java Debugger like `jdb`.
+
+```ps1
+adb forward tcp:12345 jdwp:$(adb shell pidof <package> )
+jdb -attach localhost:12345
+```
+
 ## Dynamic Analysis
 
 Dynamic analysis for Android malware involves executing and monitoring an app in a controlled environment to observe its behavior. This technique detects malicious activities like data exfiltration, unauthorized access, and system modifications. Additionally, it aids in reverse engineering app features, revealing hidden functionalities and potential vulnerabilities for better threat mitigation.
@@ -198,7 +278,7 @@ chown root:root /system/etc/security/cacerts/<hash>.0
 * [Frida - Documentation](https://frida.re/docs/android)
 * [Frida - Github](https://github.com/frida/frida/)
 
-Download [`frida`](https://github.com/frida/frida/releases) from releases.
+Download [frida/frida](https://github.com/frida/frida/releases) from releases.
 
 ```ps1
 pip install frida-tools
@@ -207,6 +287,17 @@ adb root # might be required
 adb push frida-server /data/local/tmp/
 adb shell "chmod 755 /data/local/tmp/frida-server"
 adb shell "/data/local/tmp/frida-server &"
+```
+
+Inject frida inside the APK.
+
+```ps1
+$ pip install frida-tools
+$ frida --version
+16.7.13
+
+$ apkpatcher -a <apk> --download_frida_version <version>
+$ apkpatcher -a <apk> --download_frida_version 16.7.13
 ```
 
 Interesting Frida scripts:
@@ -482,25 +573,25 @@ One more step, you need to pair the devices using a code.
 ./platform-tools/adb shell
 ```
 
-| Command                      | Description                                    |
-|------------------------------|------------------------------------------------|
-| `adb devices`                | List devices                                   |
-| `adb connect <IP>:<PORT>`    | Connect to a remote device                     |
-| `adb install app.apk`        | Install application                            |
-| `adb uninstall app.apk`      | Uninstall application                          |
-| `adb root`                   | Restarting adbd as root                        |
-| `adb shell pm list packages` | List packages                                  |
-| `adb shell pm list packages -3` | Show third party packages                   |
-| `adb shell pm list packages -f` | Show packages and associated files          |
-| `adb shell pm clear com.test.abc` | Delete all data associated with a package |
-| `adb pull <remote> <local>`  | Download file                                  |
-| `adb push <local> <remote>`  | Upload file                                    |
-| `adb shell screenrecord /sdcard/demo.mp4`| Record video of the screen         |
-| `adb shell am start -n com.test.abc` | Start an activity                      |
-| `adb shell am startservice` | Start a service                                |
-| `adb shell am broadcast`    | Send a broadcast                               |
-| `adb logcat *:D`             | Show log with Debug level                      |
-| `adb logcat -c`              | Clears the entire log                          |
+| Command                                   | Description                               |
+| ----------------------------------------- | ----------------------------------------- |
+| `adb devices`                             | List devices                              |
+| `adb connect <IP>:<PORT>`                 | Connect to a remote device                |
+| `adb install app.apk`                     | Install application                       |
+| `adb uninstall app.apk`                   | Uninstall application                     |
+| `adb root`                                | Restarting adbd as root                   |
+| `adb shell pm list packages`              | List packages                             |
+| `adb shell pm list packages -3`           | Show third party packages                 |
+| `adb shell pm list packages -f`           | Show packages and associated files        |
+| `adb shell pm clear com.test.abc`         | Delete all data associated with a package |
+| `adb pull <remote> <local>`               | Download file                             |
+| `adb push <local> <remote>`               | Upload file                               |
+| `adb shell screenrecord /sdcard/demo.mp4` | Record video of the screen                |
+| `adb shell am start -n com.test.abc`      | Start an activity                         |
+| `adb shell am startservice`               | Start a service                           |
+| `adb shell am broadcast`                  | Send a broadcast                          |
+| `adb logcat *:D`                          | Show log with Debug level                 |
+| `adb logcat -c`                           | Clears the entire log                     |
 
 ## Android Virtual Device
 
@@ -510,12 +601,12 @@ An Android Virtual Device (AVD) is an emulator configuration that mimics a physi
 emulator -avd Pixel_8_API_34 -writable-system
 ```
 
-| Command                      | Description                                    |
-|------------------------------|------------------------------------------------|
-| `-tcpdump /path/dumpfile.cap`| Capture all the traffic in a file |
-| `-dns-server X.X.X.X`        | Set DNS servers |
-| `-http-proxy X.X.X.X:8080`   | Set HTTP proxy |
-| `-port 5556`                 | Set the ADB TCP port number |
+| Command                       | Description                       |
+| ----------------------------- | --------------------------------- |
+| `-tcpdump /path/dumpfile.cap` | Capture all the traffic in a file |
+| `-dns-server X.X.X.X`         | Set DNS servers                   |
+| `-http-proxy X.X.X.X:8080`    | Set HTTP proxy                    |
+| `-port 5556`                  | Set the ADB TCP port number       |
 
 ## Unlock Bootloader
 
@@ -545,16 +636,38 @@ Unlock the bootloader will wipe the userdata partition. On some device these met
     * For MediaTek devices, BROM (Boot ROM) mode
     * For Unisoc devices, Research Download Mode.
 
+## Android XML
+
+* [androguard/axml](https://github.com/androguard/axml) - Android binary XML parser in Python
+* [xgouchet/AXML](https://github.com/xgouchet/AXML) - Android binary XML file parser
+* [MadSquirrels/pyaxml](https://gitlab.com/MadSquirrels/mobile/pyaxml) - Library to parse and modify AXML files
+
+```py
+pip install pyaxml
+
+# To print Manifest in XML form
+pyaxml-rs axml2xml -i AndroidManifest.xml
+
+# To print resources.arsc in XML form
+pyaxml-rs arsc2xml -i resources.arsc
+
+# To convert XML to AXML
+pyaxml-rs xml2axml -i AndroidManifest.xml -o AndroidManifest.axml
+```
+
 ## References
 
+* [A beginners guide to using Frida to bypass root detection. - DianaOpanga - November 27, 2023](https://medium.com/@dianaopanga/a-beginners-guide-to-using-frida-to-bypass-root-detection-16af76b989ac)
 * [Android App Reverse Engineering 101 - @maddiestone](https://www.ragingrock.com/AndroidAppRE/)
 * [Android app vulnerability classes - Google Play Protect](https://static.googleusercontent.com/media/www.google.com/fr//about/appsecurity/play-rewards/Android_app_vulnerability_classes.pdf)
-* [Mobile Systems and Smartphone Security - @reyammer](https://mobisec.reyammer.io)
-* [Configuring Frida with BurpSuite and Genymotion to bypass Android SSL Pinning - arben](https://spenkk.github.io/bugbounty/Configuring-Frida-with-Burp-and-GenyMotion-to-bypass-SSL-Pinning/)
-* [Configuring Burp Suite With Android Nougat - ropnop - January 18, 2018](https://blog.ropnop.com/configuring-burp-suite-with-android-nougat)
-* [Configuring Burp Suite with Android Emulators - Aashish Tamang - Jun 6, 2022](https://blog.yarsalabs.com/setting-up-burp-for-android-application-testing/)
-* [Introduction to Android Pentesting - Jarrod - July 8, 2024](https://owlhacku.com/introduction-to-android-pentesting/)
-* [A beginners guide to using Frida to bypass root detection. - DianaOpanga - Nov 27, 2023](https://medium.com/@dianaopanga/a-beginners-guide-to-using-frida-to-bypass-root-detection-16af76b989ac)
+* [Apkpatcher - Workshop on application patching - Benoît FORGETTE (MadSquirrels) - June 27, 2026](https://ci-yow.com/workshop-slide/slides.html)
 * [Appium documentation](https://appium.io/docs/en/latest/)
-* [How to root an Android device for analysis and vulnerability assessment - Joe Lovett - Aug 23, 2024](https://www.pentestpartners.com/security-blog/how-to-root-an-android-device-for-analysis-and-vulnerability-assessment/)
-* [Configuring Android Emulator with Burp Suite - Jarrod @Jrod_R87 - Jan 8, 2025](https://owlhacku.com/configuring-android-emulator-with-burp-suite/)
+* [Configuring Android Emulator with Burp Suite - Jarrod @Jrod_R87 - January 8, 2025](https://owlhacku.com/configuring-android-emulator-with-burp-suite/)
+* [Configuring Burp Suite with Android Emulators - Aashish Tamang - June 6, 2022](https://blog.yarsalabs.com/setting-up-burp-for-android-application-testing/)
+* [Configuring Burp Suite With Android Nougat - ropnop - January 18, 2018](https://blog.ropnop.com/configuring-burp-suite-with-android-nougat)
+* [Configuring Frida with BurpSuite and Genymotion to bypass Android SSL Pinning - arben - September 4, 2020](https://spenkk.github.io/bugbounty/Configuring-Frida-with-Burp-and-GenyMotion-to-bypass-SSL-Pinning/)
+* [How to root an Android device for analysis and vulnerability assessment - Joe Lovett - August 23, 2024](https://www.pentestpartners.com/security-blog/how-to-root-an-android-device-for-analysis-and-vulnerability-assessment/)
+* [Intercepting OkHttp at Runtime With Frida - A Practical Guide - Szymon Drosdzol - January 22, 2026](https://blog.doyensec.com/2026/01/22/frida-instrumentation.html)
+* [Introduction to Android Pentesting - Jarrod - July 8, 2024](https://owlhacku.com/introduction-to-android-pentesting/)
+* [Mobile Systems and Smartphone Security - @reyammer](https://mobisec.reyammer.io)
+* [Rooting an Android Emulator for Mobile Security Testing - 8ksecresearch - April 17, 2025](https://8ksec.io/rooting-an-android-emulator-for-mobile-security-testing/)

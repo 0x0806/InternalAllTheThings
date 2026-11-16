@@ -2,25 +2,36 @@
 
 Conditional Access is used to restrict access to resources to compliant devices only.
 
+* [rbnroot/CAPSlock](https://github.com/rbnroot/CAPSlock) - Offline Conditional Access (CA) analysis tool built on top of a roadrecon database.
+* [absolomb/FindMeAccess](https://github.com/absolomb/FindMeAccess) - Tool for finding gaps in Azure/M365 MFA requirements for different resources, client ids, and user agents.
+
+## Enumerate Conditional Access Policies
+
 * Enumerate Conditional Access Policies: `roadrecon plugin policies` (query the local database)
 
-| CAP                       | Bypass  |
-|---------------------------|---------|
-| Location / IP ranges      | Corporate VPN, Guest Wifi |
-| Platform requirement      | User-Agent switcher (Android, PS4, Linux, ...) |
+| CAP                       | Bypass                                                          |
+| ------------------------- | --------------------------------------------------------------- |
+| Location / IP ranges      | Corporate VPN, Guest Wifi                                       |
+| Platform requirement      | User-Agent switcher (Android, PS4, Linux, ...)                  |
 | Protocol requirement      | Use another protocol (e.g for e-mail acccess:  POP, IMAP, SMTP) |
-| Azure AD Joined Device    | Try to join a VM (Work Access)|
-| Compliant Device (Intune) | Fake device compliance |
-| Device requirement        | / |
-| MFA                       | / |
-| Legacy Protocols          | / |
-| Domain Joined             | / |
+| Azure AD Joined Device    | Try to join a VM (Work Access)                                  |
+| Compliant Device (Intune) | Fake device compliance                                          |
+| Device requirement        | /                                                               |
+| MFA                       | /                                                               |
+| Legacy Protocols          | /                                                               |
+| Domain Joined             | /                                                               |
+
+```ps1
+python3 CAPSlock.py analyze -u <userprincipalname> --resource <resource-id> [options]
+python3 CAPSlock.py what-if -u <userprincipalname> --resource <resource-id> [options]
+python3 CAPSlock.py web-gui --port 8080
+```
 
 ## Bypassing CAP by faking device compliance
 
 ### Intune Company Portal Client ID Bypass
 
-Use Intune Company Portal Client ID (`9ba1a5c7-f17a-4de9-a1f1-6178c8d51223`), to run roadrecon even when there is a device compliance policy. it is a hardcoded and undocumented exclusion in Conditional Access for device compliance and has the `user_impersonation` rights on the AAD Graph.
+Use Intune Company Portal Client ID (`9ba1a5c7-f17a-4de9-a1f1-6178c8d51223`), to run `roadrecon` even when there is a device compliance policy. it is a hardcoded and undocumented exclusion in Conditional Access for device compliance and has the `user_impersonation` rights on the AAD Graph.
 
 * Client ID: `9ba1a5c7-f17a-4de9-a1f1-6178c8d51223`
 
@@ -73,3 +84,10 @@ Try several `User-Agent` to get access to the resources:
 ## Bypassing CAP with location
 
 Try different IP locations using a VPN.
+
+## References
+
+* [Bypassing Conditional Access policies that have a resource exclusion - Dirk-jan Mollema - June 22, 2026](https://dirkjanm.io/bypassing-conditional-access-with-resource-exclusion/)
+* [Conditional Access bypasses - Fabian Bader - November 30, 2025](https://cloudbrothers.info/en/conditional-access-bypasses/)
+* [Finding Entra ID CA Bypasses - the structured way - Dirk-jan Mollema and Fabian Bader - June 23, 2025](https://troopers.de/troopers25/talks/tfsfqs/)
+* [STOP THE CAP: Making Entra ID Conditional Access Make Sense Offline - Lee Robinson - February 17, 2026](https://specterops.io/blog/2026/02/17/stop-the-cap-making-entra-id-conditional-access-make-sense-offline/)

